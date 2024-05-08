@@ -21,14 +21,14 @@ vignette: >
 
 # Installation
 
-The `smoothclust` package can be installed from Bioconductor as follows (using R version 4.4 and Bioconductor version 3.19, available from approximately 2024-05-01 onwards). Additional details are shown on the [Bioconductor](https://bioconductor.org/packages/smoothclust) package landing page.
+The `smoothclust` package can be installed from Bioconductor as follows (using R version 4.4 onwards). This is the recommended installation for most users. Additional details are shown on the [Bioconductor](https://bioconductor.org/packages/smoothclust) package landing page.
 
 ```{r, eval=FALSE}
 install.packages("BiocManager")
 BiocManager::install("smoothclust")
 ```
 
-The latest development version of the package can be installed from the [devel](https://contributions.bioconductor.org/use-devel.html) version of Bioconductor or from [GitHub](https://github.com/lmweber/smoothclust).
+The latest development version of the package can also be installed from the [devel](https://contributions.bioconductor.org/use-devel.html) version of Bioconductor or from [GitHub](https://github.com/lmweber/smoothclust).
 
 
 # Input data format
