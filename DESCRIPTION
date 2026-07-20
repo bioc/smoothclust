@@ -28,6 +28,7 @@ Depends:
 Imports: 
     SpatialExperiment, 
     SummarizedExperiment, 
+    S4Vectors,
     BiocNeighbors, 
     Matrix, 
     methods, 
@@ -37,7 +38,6 @@ Suggests:
     BiocStyle, 
     knitr, 
     STexampleData, 
-    scuttle, 
     scran, 
     scater, 
     ggspavis, 

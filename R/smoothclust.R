@@ -12,24 +12,32 @@
 #' consisting of consistent mixtures of cell types may then be further
 #' investigated by applying cell type compositional analyses or differential
 #' analyses.
+#'
+#' When \code{normalize = TRUE}, library size normalization is performed before
+#' spatial smoothing. This ensures that neighboring locations contribute
+#' according to the spatial weights rather than their sequencing depths. When
+#' \code{log = TRUE}, log2 transformation is also performed after smoothing.
+#' Size factors should be calculated from the desired reference set of genes
+#' before filtering and supplied using \code{size_factors}.
 #' 
 #' 
 #' @param input Input data, which can be provided as either a
-#'   \code{SpatialExperiment} object or a numeric matrix. If this is a
-#'   \code{SpatialExperiment} object, it is assumed to contain either raw
-#'   expression counts or logcounts in the \code{assay} slots and spatial
-#'   coordinates in the \code{spatialCoords} slot. If this is a numeric matrix,
-#'   it is assumed to contain either raw expression counts or logcounts, and
-#'   spatial coordinates need to be provided separately with the
-#'   \code{spatial_coords} argument.
+#'   \code{SpatialExperiment} object or a numeric matrix. With the default
+#'   preprocessing settings, the selected assay or matrix is assumed to contain
+#'   non-negative raw expression counts. Pre-normalized or log-transformed
+#'   values may also be supplied if \code{normalize} and \code{log} are set
+#'   appropriately. Spatial coordinates are obtained from the
+#'   \code{spatialCoords} slot for a \code{SpatialExperiment}, or must be
+#'   supplied separately using \code{spatial_coords} for a numeric matrix.
 #' 
 #' @param assay_name For a \code{SpatialExperiment} input object, this argument
 #'   specifies the name of the \code{assay} containing the expression values to
-#'   be smoothed. In most cases, this will be \code{counts}, which contains raw
-#'   expression counts. Alternatively, \code{logcounts} may also be used. Note
-#'   that if \code{logcounts} are used, the smoothed values represent geometric
-#'   averages. This argument is only used if the input is a
-#'   \code{SpatialExperiment} object. Default = \code{counts}.
+#'   be processed and smoothed. With the default preprocessing settings, this
+#'   should contain raw expression counts. If an assay containing normalized or
+#'   log-transformed values is used, the \code{normalize} and \code{log}
+#'   arguments should be set to avoid applying either step twice. This argument
+#'   is only used if the input is a \code{SpatialExperiment} object. Default =
+#'   \code{counts}.
 #' 
 #' @param spatial_coords Numeric matrix of spatial coordinates, assumed to
 #'   contain x coordinates in first column and y coordinates in second column.
@@ -73,20 +81,49 @@
 #' 
 #' @param n_threads Number of threads to use for nearest-neighbor searches.
 #'   Default = 1.
-#' 
-#' 
-#' @return Returns spatially smoothed expression values, which can then be used
-#'   as the input for further downstream analyses. Results are returned either
-#'   as a \code{SpatialExperiment} object containing a new \code{assay} named
-#'   \code{<assay_name>_smooth} (e.g. \code{counts_smooth} or
-#'   \code{logcounts_smooth}), or as a numeric matrix, depending on the input
-#'   type.
+#'
+#' @param normalize Whether to perform library size normalization before spatial
+#'   smoothing. Expression values in each column are divided by a size factor
+#'   centered to have mean one. Default = \code{TRUE}.
+#'
+#' @param log Whether to apply a log2 transformation after spatial smoothing.
+#'   The transformation is \code{log2(x + pseudo_count)}. Default =
+#'   \code{TRUE}.
+#'
+#' @param size_factors Optional positive numeric vector with one value per
+#'   spatial location, used for normalization when \code{normalize = TRUE}.
+#'   Supplied values are centered to have mean one. If the vector is named, its
+#'   names must match the column names of \code{input}, and values are reordered
+#'   to match the input columns. If \code{NULL}, size factors are calculated
+#'   from column sums of the selected, unsmoothed input assay or matrix. To
+#'   calculate size factors from a broader set of genes than those supplied to
+#'   \code{smoothclust}, calculate them before gene filtering and provide them
+#'   here. Default = \code{NULL}.
+#'
+#' @param pseudo_count Positive numeric scalar added before log2 transformation
+#'   when \code{log = TRUE}. The default value of 1 preserves sparse zeros.
+#'   Non-default values may produce a dense output matrix. Default = 1.
+#'
+#' @param output_assay_name Optional name for the output assay when \code{input}
+#'   is a \code{SpatialExperiment}. If \code{NULL}, the name is
+#'   \code{logcounts_smooth} when \code{log = TRUE},
+#'   \code{normcounts_smooth} when \code{normalize = TRUE} and
+#'   \code{log = FALSE}, and \code{<assay_name>_smooth} otherwise. An error is
+#'   raised if the output assay already exists. This argument is ignored for a
+#'   numeric matrix input. Default = \code{NULL}.
+#'
+#'
+#' @return Returns processed and spatially smoothed expression values for use in
+#'   downstream analyses. Results are returned either as a
+#'   \code{SpatialExperiment} object containing a new assay, or as a numeric
+#'   matrix-like object, depending on the input type.
 #' 
 #' @importFrom SpatialExperiment spatialCoords
 #' @importFrom SummarizedExperiment assays 'assays<-' assayNames
 #' @importFrom BiocNeighbors findNeighbors findKNN
 #' @importFrom Matrix sparseMatrix
 #' @importFrom methods is as
+#' @importFrom S4Vectors metadata 'metadata<-'
 #' @importFrom utils txtProgressBar setTxtProgressBar
 #' 
 #' @export
@@ -96,18 +133,28 @@
 #' input <- matrix(rpois(60, lambda = 10), nrow = 10)
 #' spatial_coords <- cbind(rep(1:3, each = 2), rep(1:2, times = 3))
 #' 
-#' # smooth a numeric expression matrix
+#' # normalize, smooth, and log-transform a numeric expression matrix
 #' out <- smoothclust(input, spatial_coords = spatial_coords, bandwidth = 0.6)
 #' dim(out)
+#'
+#' # supply size factors calculated before any gene filtering
+#' size_factors <- colSums(input)
+#' out_precomputed <- smoothclust(input, spatial_coords = spatial_coords,
+#'                                bandwidth = 0.6,
+#'                                size_factors = size_factors)
+#' dim(out_precomputed)
 #' 
 smoothclust <- function(input, assay_name = "counts", spatial_coords = NULL, 
                         method = c("uniform", "kernel", "knn"), 
                         bandwidth = 0.05, k = 18, truncate = 0.05, 
-                        n_threads = 1) {
+                        n_threads = 1, normalize = TRUE, log = TRUE,
+                        size_factors = NULL, pseudo_count = 1,
+                        output_assay_name = NULL) {
   
   method <- match.arg(method, c("uniform", "kernel", "knn"))
   
-  stopifnot(is.character(assay_name) && length(assay_name) == 1)
+  stopifnot(is.character(assay_name) && length(assay_name) == 1 &&
+              !is.na(assay_name) && nzchar(assay_name))
   stopifnot(is.numeric(bandwidth) && length(bandwidth) == 1 && 
               is.finite(bandwidth) && bandwidth > 0)
   stopifnot(is.numeric(k) && length(k) == 1 && is.finite(k) && 
@@ -117,14 +164,34 @@ smoothclust <- function(input, assay_name = "counts", spatial_coords = NULL,
   stopifnot(is.numeric(n_threads) && length(n_threads) == 1 && 
               is.finite(n_threads) && n_threads > 0 && 
               n_threads == floor(n_threads))
+  stopifnot(is.logical(normalize) && length(normalize) == 1 && !is.na(normalize))
+  stopifnot(is.logical(log) && length(log) == 1 && !is.na(log))
+  stopifnot(is.numeric(pseudo_count) && length(pseudo_count) == 1 &&
+              is.finite(pseudo_count) && pseudo_count > 0)
+  stopifnot(is.null(output_assay_name) ||
+              (is.character(output_assay_name) &&
+                 length(output_assay_name) == 1 &&
+                 !is.na(output_assay_name) && nzchar(output_assay_name)))
+
+  if (!normalize && !is.null(size_factors)) {
+    stop("'size_factors' can only be supplied when 'normalize = TRUE'.")
+  }
   
   if (is(input, "SpatialExperiment")) {
     spe <- input
     stopifnot(assay_name %in% assayNames(spe))
+    if (assay_name == "logcounts" && (normalize || log)) {
+      stop("Set 'normalize = FALSE' and 'log = FALSE' when smoothing a ",
+           "'logcounts' assay.")
+    }
+    if (assay_name == "normcounts" && normalize) {
+      stop("Set 'normalize = FALSE' when using a 'normcounts' assay.")
+    }
     vals <- assays(spe)[[assay_name]]
     spatial_coords <- spatialCoords(spe)
   } else {
-    stopifnot(is.numeric(input))
+    stopifnot((is.numeric(input) || is(input, "Matrix")),
+              length(dim(input)) == 2)
     vals <- input
   }
   
@@ -138,6 +205,58 @@ smoothclust <- function(input, assay_name = "counts", spatial_coords = NULL,
   vals <- as(vals, "CsparseMatrix")
   N <- ncol(vals)
   stopifnot(nrow(spatial_coords) == N)
+
+  # validate and normalize expression values before spatial smoothing
+  size_factor_source <- "none"
+  size_factors_used <- NULL
+  if (normalize || log) {
+    if (!all(is.finite(vals))) {
+      stop("Expression values must be finite when normalization or logging is requested.")
+    }
+    if (any(vals < 0)) {
+      stop("Expression values must be non-negative when normalization or logging is requested.")
+    }
+  }
+
+  if (normalize) {
+    input_library_sizes <- as.numeric(Matrix::colSums(vals))
+    if (any(input_library_sizes <= 0)) {
+      stop("All input columns must have positive sums when normalization is requested.")
+    }
+
+    if (is.null(size_factors)) {
+      size_factors_used <- input_library_sizes
+      size_factor_source <- "automatic"
+    } else {
+      if (!is.numeric(size_factors) || !is.null(dim(size_factors)) ||
+          length(size_factors) != N || any(!is.finite(size_factors)) ||
+          any(size_factors <= 0)) {
+        stop("'size_factors' must be a positive finite numeric vector with ",
+             "one value per input column.")
+      }
+
+      size_factors_used <- as.numeric(size_factors)
+      factor_names <- names(size_factors)
+      input_names <- colnames(input)
+      if (!is.null(factor_names)) {
+        if (is.null(input_names)) {
+          stop("Named 'size_factors' require non-NULL input column names.")
+        }
+        if (anyNA(factor_names) || any(!nzchar(factor_names)) ||
+            anyDuplicated(factor_names) || anyDuplicated(input_names) ||
+            !setequal(factor_names, input_names)) {
+          stop("Names of 'size_factors' must uniquely match input column names.")
+        }
+        size_factors_used <- size_factors_used[match(input_names, factor_names)]
+      }
+      size_factor_source <- "supplied"
+    }
+
+    size_factors_used <- size_factors_used / mean(size_factors_used)
+    names(size_factors_used) <- colnames(input)
+    vals <- vals %*% Matrix::Diagonal(x = 1 / size_factors_used)
+  }
+
   if (method == "knn") {
     stopifnot(k < N)
   }
@@ -173,7 +292,7 @@ smoothclust <- function(input, assay_name = "counts", spatial_coords = NULL,
   } else if (method == "kernel") {
     # 1. determine max search distance based on truncation threshold
     # to avoid slow all-vs-all distance calculation
-    max_dist <- -bandwidth_scaled * log(truncate)
+    max_dist <- -bandwidth_scaled * base::log(truncate)
     
     # 2. fast neighbor search within this radius
     nn_data <- findNeighbors(spatial_coords, threshold = max_dist, 
@@ -216,6 +335,15 @@ smoothclust <- function(input, assay_name = "counts", spatial_coords = NULL,
   
   # 2. perform smoothing operation in one matrix multiplication step
   vals_smooth <- vals %*% W
+
+  # 3. apply log2 transformation after smoothing
+  if (log) {
+    if (pseudo_count == 1) {
+      vals_smooth <- base::log1p(vals_smooth) / base::log(2)
+    } else {
+      vals_smooth <- base::log2(vals_smooth + pseudo_count)
+    }
+  }
   
   # --- return results ---
   
@@ -227,8 +355,41 @@ smoothclust <- function(input, assay_name = "counts", spatial_coords = NULL,
   
   # return results (smoothed values)
   if (is(input, "SpatialExperiment")) {
-    assay_name_smooth <- paste0(assay_name, "_smooth")
-    assays(spe)[[assay_name_smooth]] <- vals_smooth
+    if (is.null(output_assay_name)) {
+      output_assay_name <- if (log) {
+        "logcounts_smooth"
+      } else if (normalize) {
+        "normcounts_smooth"
+      } else {
+        paste0(assay_name, "_smooth")
+      }
+    }
+    if (output_assay_name %in% assayNames(spe)) {
+      stop("Output assay '", output_assay_name, "' already exists. Use ",
+           "'output_assay_name' to choose a different name.")
+    }
+
+    assays(spe)[[output_assay_name]] <- vals_smooth
+
+    object_metadata <- metadata(spe)
+    if (is.null(object_metadata$smoothclust)) {
+      object_metadata$smoothclust <- list()
+    }
+    object_metadata$smoothclust[[output_assay_name]] <- list(
+      input_assay = assay_name,
+      output_assay = output_assay_name,
+      normalize = normalize,
+      log = log,
+      size_factor_source = size_factor_source,
+      size_factors = size_factors_used,
+      pseudo_count = if (log) pseudo_count else NA_real_,
+      method = method,
+      bandwidth = bandwidth,
+      k = k,
+      truncate = truncate,
+      n_threads = n_threads
+    )
+    metadata(spe) <- object_metadata
     spe
   } else {
     vals_smooth

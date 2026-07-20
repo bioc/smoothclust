@@ -3,7 +3,8 @@ test_that("smoothclust includes self in uniform neighborhoods", {
   spatial_coords <- cbind(c(0, 1, 3, 6), 0)
   
   out <- smoothclust(vals, spatial_coords = spatial_coords, 
-                     method = "uniform", bandwidth = 1.1 / 6)
+                     method = "uniform", bandwidth = 1.1 / 6,
+                     normalize = FALSE, log = FALSE)
   
   expect_equal(as.numeric(out), c(1.5, 1.5, 3, 4))
 })
@@ -13,7 +14,8 @@ test_that("smoothclust includes self in kernel neighborhoods", {
   spatial_coords <- cbind(c(0, 100, 101), 0)
   
   out <- smoothclust(vals, spatial_coords = spatial_coords, 
-                     method = "kernel", bandwidth = 1 / 101, truncate = 0.14)
+                     method = "kernel", bandwidth = 1 / 101, truncate = 0.14,
+                     normalize = FALSE, log = FALSE)
   
   w <- exp(-1)
   expect_equal(as.numeric(out), c(1, (2 + 3 * w) / (1 + w), 
@@ -24,7 +26,8 @@ test_that("smoothclust includes self in knn neighborhoods", {
   vals <- matrix(1:4, nrow = 1)
   spatial_coords <- cbind(c(0, 1, 3, 6), 0)
   
-  out <- smoothclust(vals, spatial_coords = spatial_coords, method = "knn", k = 1)
+  out <- smoothclust(vals, spatial_coords = spatial_coords, method = "knn", k = 1,
+                     normalize = FALSE, log = FALSE)
   
   expect_equal(as.numeric(out), c(1.5, 1.5, 2.5, 3.5))
 })

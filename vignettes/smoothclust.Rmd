@@ -45,7 +45,6 @@ The example workflow in this section demonstrates how to run `smoothclust` to ge
 ```{r, message=FALSE}
 library(smoothclust)
 library(STexampleData)
-library(scuttle)
 library(scran)
 library(scater)
 library(ggspavis)
@@ -66,30 +65,89 @@ assayNames(spe)
 ```
 
 
-Run `smoothclust` using default parameter settings, which have been selected to be appropriate for Visium data from human tissue.
+Filtering is performed outside `smoothclust`, using the raw counts. First, we
+identify mitochondrial genes and calculate spot-level quality-control (QC)
+metrics from the complete count matrix. QC thresholds should be selected for
+each dataset or sample; for this compact example, we retain tissue spots with
+positive total and non-mitochondrial counts.
 
-The method for smoothing can be specified by providing the `method` argument, with available options `uniform`, `kernel`, and `knn`. Additional arguments can be used to set parameter values, including `bandwidth`, `k,` and `truncate`, depending on the choice of method. For more details, see the function documentation (`?smoothclust`) or the paper (in preparation).
+```{r}
+# calculate QC metrics from complete raw counts
+raw_counts <- assay(spe, "counts")
+is_mito <- grepl("(^mt-)", rowData(spe)$gene_name, ignore.case = TRUE)
+
+total_counts <- Matrix::colSums(raw_counts)
+detected_genes <- Matrix::colSums(raw_counts > 0)
+mito_counts <- Matrix::colSums(raw_counts[is_mito, , drop = FALSE])
+non_mito_counts <- total_counts - mito_counts
+
+colData(spe)$sum <- total_counts
+colData(spe)$detected <- detected_genes
+colData(spe)$percent_mito <- 100 * mito_counts / total_counts
+
+summary(colData(spe)[, c("sum", "detected", "percent_mito")])
+table(is_mito)
+
+# illustrative spot-level QC
+keep_spot <- total_counts > 0 & non_mito_counts > 0
+spe <- spe[, keep_spot]
+raw_counts <- raw_counts[, keep_spot, drop = FALSE]
+```
+
+
+We calculate library size factors from all non-mitochondrial genes before
+low-expression filtering. This keeps normalization independent of the chosen
+expression threshold while preventing mitochondrial composition from affecting
+normalization of the retained genes.
+
+```{r}
+# calculate non-mitochondrial size factors before gene filtering
+non_mito_library_sizes <- Matrix::colSums(
+    raw_counts[!is_mito, , drop = FALSE]
+)
+size_factors <- non_mito_library_sizes / mean(non_mito_library_sizes)
+
+summary(size_factors)
+```
+
+
+Next, we apply an illustrative low-expression filter and remove mitochondrial
+genes. Filtering rules are study-specific; here, we retain genes detected in at
+least five spots. We also remove any spots with zero counts across the retained
+genes, subset the stored size factors to the remaining spots, and re-center
+them without recalculating them from the filtered genes.
+
+```{r}
+# filter low-expressed and mitochondrial genes
+keep_expressed <- Matrix::rowSums(raw_counts > 0) >= 5
+keep_gene <- keep_expressed & !is_mito
+spe <- spe[keep_gene, ]
+
+# remove spots with zero counts after feature filtering
+keep_nonzero <- Matrix::colSums(assay(spe, "counts")) > 0
+spe <- spe[, keep_nonzero]
+size_factors <- size_factors[keep_nonzero]
+size_factors <- size_factors / mean(size_factors)
+
+dim(spe)
+```
+
+
+Run `smoothclust` using default parameter settings, which have been selected to be appropriate for Visium data from human tissue. By default, `smoothclust` normalizes the raw counts using library size factors, smooths the normalized values, and then applies a log-transformation. Supplying the factors calculated above ensures that normalization is defined using all non-mitochondrial genes rather than only the filtered analysis features.
+
+The method for smoothing can be specified by providing the `method` argument, with available options `uniform`, `kernel`, and `knn`. Additional arguments can be used to set parameter values, including `bandwidth`, `k,` and `truncate`, depending on the choice of method. For more details, see the function documentation (`?smoothclust`).
 
 ```{r, results="hide"}
 # run smoothclust using default parameters
-spe <- smoothclust(spe)
+spe <- smoothclust(spe, size_factors = size_factors)
 ```
 
 
-The smoothed expression counts are stored in a new assay named `counts_smooth`:
+The normalized, smoothed, and log-transformed expression values are stored in a
+new assay named `logcounts_smooth`:
 
 ```{r}
 # check output object
-assayNames(spe)
-```
-
-
-Calculate log-transformed normalized counts (logcounts) on the smoothed expression counts. Here, the argument `assay.type = "counts_smooth"` specifies that we want to calculate logcounts using the smoothed counts from `smoothclust`.
-
-```{r}
-# calculate logcounts
-spe <- logNormCounts(spe, assay.type = "counts_smooth")
-
 assayNames(spe)
 ```
 
@@ -101,18 +159,10 @@ We use a relatively small number of clusters for demonstration purposes in this 
 ```{r}
 # preprocessing steps for clustering
 
-# remove mitochondrial genes
-is_mito <- grepl("(^mt-)", rowData(spe)$gene_name, ignore.case = TRUE)
-table(is_mito)
-spe <- spe[!is_mito, ]
-dim(spe)
-
 # select top highly variable genes (HVGs)
-dec <- modelGeneVar(spe)
+dec <- modelGeneVar(spe, assay.type = "logcounts_smooth")
 top_hvgs <- getTopHVGs(dec, prop = 0.1)
 length(top_hvgs)
-spe <- spe[top_hvgs, ]
-dim(spe)
 ```
 
 ```{r}
@@ -120,7 +170,11 @@ dim(spe)
 
 # compute PCA on top HVGs
 set.seed(123)
-spe <- runPCA(spe)
+spe <- runPCA(
+    spe,
+    subset_row = top_hvgs,
+    exprs_values = "logcounts_smooth"
+)
 ```
 
 ```{r}

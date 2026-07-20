@@ -12,26 +12,32 @@ smoothclust(
   bandwidth = 0.05,
   k = 18,
   truncate = 0.05,
-  n_threads = 1
+  n_threads = 1,
+  normalize = TRUE,
+  log = TRUE,
+  size_factors = NULL,
+  pseudo_count = 1,
+  output_assay_name = NULL
 )
 }
 \arguments{
 \item{input}{Input data, which can be provided as either a
-\code{SpatialExperiment} object or a numeric matrix. If this is a
-\code{SpatialExperiment} object, it is assumed to contain either raw
-expression counts or logcounts in the \code{assay} slots and spatial
-coordinates in the \code{spatialCoords} slot. If this is a numeric matrix,
-it is assumed to contain either raw expression counts or logcounts, and
-spatial coordinates need to be provided separately with the
-\code{spatial_coords} argument.}
+\code{SpatialExperiment} object or a numeric matrix. With the default
+preprocessing settings, the selected assay or matrix is assumed to contain
+non-negative raw expression counts. Pre-normalized or log-transformed
+values may also be supplied if \code{normalize} and \code{log} are set
+appropriately. Spatial coordinates are obtained from the
+\code{spatialCoords} slot for a \code{SpatialExperiment}, or must be
+supplied separately using \code{spatial_coords} for a numeric matrix.}
 
 \item{assay_name}{For a \code{SpatialExperiment} input object, this argument
 specifies the name of the \code{assay} containing the expression values to
-be smoothed. In most cases, this will be \code{counts}, which contains raw
-expression counts. Alternatively, \code{logcounts} may also be used. Note
-that if \code{logcounts} are used, the smoothed values represent geometric
-averages. This argument is only used if the input is a
-\code{SpatialExperiment} object. Default = \code{counts}.}
+be processed and smoothed. With the default preprocessing settings, this
+should contain raw expression counts. If an assay containing normalized or
+log-transformed values is used, the \code{normalize} and \code{log}
+arguments should be set to avoid applying either step twice. This argument
+is only used if the input is a \code{SpatialExperiment} object. Default =
+\code{counts}.}
 
 \item{spatial_coords}{Numeric matrix of spatial coordinates, assumed to
 contain x coordinates in first column and y coordinates in second column.
@@ -75,14 +81,42 @@ efficiency. Only used for \code{method = "kernel"}. Default = 0.05.}
 
 \item{n_threads}{Number of threads to use for nearest-neighbor searches.
 Default = 1.}
+
+\item{normalize}{Whether to perform library size normalization before spatial
+smoothing. Expression values in each column are divided by a size factor
+centered to have mean one. Default = \code{TRUE}.}
+
+\item{log}{Whether to apply a log2 transformation after spatial smoothing.
+The transformation is \code{log2(x + pseudo_count)}. Default =
+\code{TRUE}.}
+
+\item{size_factors}{Optional positive numeric vector with one value per
+spatial location, used for normalization when \code{normalize = TRUE}.
+Supplied values are centered to have mean one. If the vector is named, its
+names must match the column names of \code{input}, and values are reordered
+to match the input columns. If \code{NULL}, size factors are calculated
+from column sums of the selected, unsmoothed input assay or matrix. To
+calculate size factors from a broader set of genes than those supplied to
+\code{smoothclust}, calculate them before gene filtering and provide them
+here. Default = \code{NULL}.}
+
+\item{pseudo_count}{Positive numeric scalar added before log2 transformation
+when \code{log = TRUE}. The default value of 1 preserves sparse zeros.
+Non-default values may produce a dense output matrix. Default = 1.}
+
+\item{output_assay_name}{Optional name for the output assay when \code{input}
+is a \code{SpatialExperiment}. If \code{NULL}, the name is
+\code{logcounts_smooth} when \code{log = TRUE},
+\code{normcounts_smooth} when \code{normalize = TRUE} and
+\code{log = FALSE}, and \code{<assay_name>_smooth} otherwise. An error is
+raised if the output assay already exists. This argument is ignored for a
+numeric matrix input. Default = \code{NULL}.}
 }
 \value{
-Returns spatially smoothed expression values, which can then be used
-  as the input for further downstream analyses. Results are returned either
-  as a \code{SpatialExperiment} object containing a new \code{assay} named
-  \code{<assay_name>_smooth} (e.g. \code{counts_smooth} or
-  \code{logcounts_smooth}), or as a numeric matrix, depending on the input
-  type.
+Returns processed and spatially smoothed expression values for use in
+  downstream analyses. Results are returned either as a
+  \code{SpatialExperiment} object containing a new assay, or as a numeric
+  matrix-like object, depending on the input type.
 }
 \description{
 Method for identification of spatial domains and spatially-aware clustering.
@@ -98,14 +132,28 @@ spatial locations, followed by unsupervised clustering. Spatial domains
 consisting of consistent mixtures of cell types may then be further
 investigated by applying cell type compositional analyses or differential
 analyses.
+
+When \code{normalize = TRUE}, library size normalization is performed before
+spatial smoothing. This ensures that neighboring locations contribute
+according to the spatial weights rather than their sequencing depths. When
+\code{log = TRUE}, log2 transformation is also performed after smoothing.
+Size factors should be calculated from the desired reference set of genes
+before filtering and supplied using \code{size_factors}.
 }
 \examples{
 set.seed(123)
 input <- matrix(rpois(60, lambda = 10), nrow = 10)
 spatial_coords <- cbind(rep(1:3, each = 2), rep(1:2, times = 3))
 
-# smooth a numeric expression matrix
+# normalize, smooth, and log-transform a numeric expression matrix
 out <- smoothclust(input, spatial_coords = spatial_coords, bandwidth = 0.6)
 dim(out)
+
+# supply size factors calculated before any gene filtering
+size_factors <- colSums(input)
+out_precomputed <- smoothclust(input, spatial_coords = spatial_coords,
+                               bandwidth = 0.6,
+                               size_factors = size_factors)
+dim(out_precomputed)
 
 }
