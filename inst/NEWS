@@ -12,3 +12,8 @@ changes in version 1.9.2 (2026-05-18)
 + include normalization for number of nearest neighbors
 + include optional composition adjustments
 + return local and sample-level boundary density metric
+
+changes in version 1.9.4 (2026-07-20)
++ add library size normalization before spatial smoothing by default
++ add log2 transformation after spatial smoothing by default
++ accept optional precomputed size factors
