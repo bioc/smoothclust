@@ -98,7 +98,9 @@ to match the input columns. If \code{NULL}, size factors are calculated
 from column sums of the selected, unsmoothed input assay or matrix. To
 calculate size factors from a broader set of genes than those supplied to
 \code{smoothclust}, calculate them before gene filtering and provide them
-here. Default = \code{NULL}.}
+here. When valid size factors are supplied, columns with zero sums in the
+selected input are permitted; when \code{NULL}, every input column must
+have a positive sum. Default = \code{NULL}.}
 
 \item{pseudo_count}{Positive numeric scalar added before log2 transformation
 when \code{log = TRUE}. The default value of 1 preserves sparse zeros.

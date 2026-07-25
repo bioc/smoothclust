@@ -98,7 +98,9 @@
 #'   from column sums of the selected, unsmoothed input assay or matrix. To
 #'   calculate size factors from a broader set of genes than those supplied to
 #'   \code{smoothclust}, calculate them before gene filtering and provide them
-#'   here. Default = \code{NULL}.
+#'   here. When valid size factors are supplied, columns with zero sums in the
+#'   selected input are permitted; when \code{NULL}, every input column must
+#'   have a positive sum. Default = \code{NULL}.
 #'
 #' @param pseudo_count Positive numeric scalar added before log2 transformation
 #'   when \code{log = TRUE}. The default value of 1 preserves sparse zeros.
@@ -219,12 +221,11 @@ smoothclust <- function(input, assay_name = "counts", spatial_coords = NULL,
   }
 
   if (normalize) {
-    input_library_sizes <- as.numeric(Matrix::colSums(vals))
-    if (any(input_library_sizes <= 0)) {
-      stop("All input columns must have positive sums when normalization is requested.")
-    }
-
     if (is.null(size_factors)) {
+      input_library_sizes <- as.numeric(Matrix::colSums(vals))
+      if (any(input_library_sizes <= 0)) {
+        stop("All input columns must have positive sums when normalization is requested.")
+      }
       size_factors_used <- input_library_sizes
       size_factor_source <- "automatic"
     } else {

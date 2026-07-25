@@ -68,7 +68,15 @@ test_that("smoothclust rejects invalid values for requested preprocessing", {
   non_finite <- matrix(as.numeric(1:12), nrow = 3)
   non_finite[1, 1] <- Inf
 
-  expect_error(smoothclust(zero_library, spatial_coords = spatial_coords))
+  expect_error(
+    smoothclust(zero_library, spatial_coords = spatial_coords),
+    "positive sums"
+  )
+  expect_no_error(smoothclust(
+    zero_library,
+    spatial_coords = spatial_coords,
+    size_factors = rep(1, ncol(zero_library))
+  ))
   expect_error(smoothclust(negative, spatial_coords = spatial_coords))
   expect_error(smoothclust(negative, spatial_coords = spatial_coords,
                            normalize = FALSE, log = TRUE))

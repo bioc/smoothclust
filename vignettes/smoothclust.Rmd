@@ -113,21 +113,15 @@ summary(size_factors)
 
 Next, we apply an illustrative low-expression filter and remove mitochondrial
 genes. Filtering rules are study-specific; here, we retain genes detected in at
-least five spots. We also remove any spots with zero counts across the retained
-genes, subset the stored size factors to the remaining spots, and re-center
-them without recalculating them from the filtered genes.
+least five spots. A spot may have zero counts across the retained genes after
+this feature filtering. Such spots can remain in the input because we supply
+positive size factors calculated from the broader, unfiltered gene set.
 
 ```{r}
 # filter low-expressed and mitochondrial genes
 keep_expressed <- Matrix::rowSums(raw_counts > 0) >= 5
 keep_gene <- keep_expressed & !is_mito
 spe <- spe[keep_gene, ]
-
-# remove spots with zero counts after feature filtering
-keep_nonzero <- Matrix::colSums(assay(spe, "counts")) > 0
-spe <- spe[, keep_nonzero]
-size_factors <- size_factors[keep_nonzero]
-size_factors <- size_factors / mean(size_factors)
 
 dim(spe)
 ```

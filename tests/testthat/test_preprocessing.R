@@ -84,6 +84,53 @@ test_that("supplied size factors are aligned by name and centered", {
   expect_equal(as.matrix(out), sweep(input, 2, expected_factors, "/"))
 })
 
+test_that("supplied size factors permit zero-sum filtered columns", {
+  input <- matrix(
+    c(2, 6, 0, 0, 4, 8),
+    nrow = 2,
+    dimnames = list(NULL, paste0("spot", 1:3))
+  )
+  spatial_coords <- cbind(c(0, 5, 10), 0)
+  supplied <- c(2, 4, 6)
+  centered <- supplied / mean(supplied)
+  expected <- sweep(input, 2, centered, "/")
+
+  out <- smoothclust(
+    input,
+    spatial_coords = spatial_coords,
+    bandwidth = 0.01,
+    normalize = TRUE,
+    log = FALSE,
+    size_factors = supplied
+  )
+  out_sparse <- smoothclust(
+    Matrix::Matrix(input, sparse = TRUE),
+    spatial_coords = spatial_coords,
+    bandwidth = 0.01,
+    normalize = TRUE,
+    log = FALSE,
+    size_factors = supplied
+  )
+  rownames(spatial_coords) <- colnames(input)
+  spe <- SpatialExperiment::SpatialExperiment(
+    assays = list(counts = input), spatialCoords = spatial_coords
+  )
+  out_spe <- smoothclust(
+    spe,
+    bandwidth = 0.01,
+    normalize = TRUE,
+    log = FALSE,
+    size_factors = supplied
+  )
+
+  expect_equal(as.matrix(out), expected)
+  expect_equal(as.matrix(out_sparse), expected)
+  expect_equal(
+    as.matrix(SummarizedExperiment::assays(out_spe)$normcounts_smooth),
+    expected
+  )
+})
+
 test_that("normalization occurs before spatial smoothing", {
   input <- matrix(c(10, 40, 30), nrow = 1)
   spatial_coords <- cbind(c(0, 1, 10), 0)
