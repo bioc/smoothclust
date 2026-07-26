@@ -17,3 +17,6 @@ changes in version 1.9.4 (2026-07-20)
 + add library size normalization before spatial smoothing by default
 + add log2 transformation after spatial smoothing by default
 + accept optional precomputed size factors
+
+changes in version 1.9.5 (2026-07-26)
++ simplify boundary density calculations
