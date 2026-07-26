@@ -201,6 +201,18 @@ plotCoords(spe, annotate = "ground_truth", pal = pal8)
 ```
 
 
+# Boundary density
+
+`boundary_density()` uses its own `k` argument for the number of neighbors, independently of smoothing. For example:
+
+```{r}
+boundary_k <- c(2L, 6L, 18L)
+vapply(boundary_k, function(k_i) {
+    boundary_density(spatialCoords(spe), colLabels(spe), k = k_i)$boundary_density
+}, numeric(1))
+```
+
+
 # Session information
 
 ```{r}
