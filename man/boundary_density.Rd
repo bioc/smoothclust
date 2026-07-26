@@ -9,9 +9,7 @@ boundary_density(
   labels,
   k = 6,
   n_threads = 1,
-  adjust = c("none", "analytic", "permutation"),
-  n_permutations = 1000,
-  seed = NULL
+  adjust = c("none", "analytic")
 )
 }
 \arguments{
@@ -31,18 +29,10 @@ colData(spe)$label` if using a \code{SpatialExperiment} object.}
 Default = 1.}
 
 \item{adjust}{Composition adjustment to calculate. Options are
-\code{"none"}, \code{"analytic"}, and \code{"permutation"}. With
-\code{"none"}, only the raw boundary density is returned. With
-\code{"analytic"}, the raw boundary density is compared to a deterministic
-expectation based on the observed label counts. With
-\code{"permutation"}, labels are randomly permuted across spatial
-locations \code{n_permutations} times. Default = \code{"none"}.}
-
-\item{n_permutations}{Number of random label permutations to use when
-\code{adjust = "permutation"}. Default = 1000.}
-
-\item{seed}{Optional random seed to use when \code{adjust = "permutation"}.
-Default = \code{NULL}.}
+\code{"none"} and \code{"analytic"}. With \code{"none"}, only the raw
+boundary density is returned. With \code{"analytic"}, the raw boundary
+density is compared to a deterministic expectation based on the observed
+label counts. Default = \code{"none"}.}
 }
 \value{
 Returns a list containing values at each point (i.e. the number of
@@ -50,10 +40,7 @@ Returns a list containing values at each point (i.e. the number of
   neighbors, and the local raw boundary density) as well as the mean
   discordant neighbor count and the sample-level raw boundary density. If
   \code{adjust = "analytic"}, the list also contains the expected boundary
-  density, relative boundary density, and excess boundary density. If
-  \code{adjust = "permutation"}, the list also contains the permutation
-  mean, standard deviation, relative boundary density, standardized score,
-  and number of permutations.
+  density and relative boundary density.
 }
 \description{
 Function for boundary density metric

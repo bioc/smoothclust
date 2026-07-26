@@ -26,18 +26,10 @@
 #'   Default = 1.
 #' 
 #' @param adjust Composition adjustment to calculate. Options are
-#'   \code{"none"}, \code{"analytic"}, and \code{"permutation"}. With
-#'   \code{"none"}, only the raw boundary density is returned. With
-#'   \code{"analytic"}, the raw boundary density is compared to a deterministic
-#'   expectation based on the observed label counts. With
-#'   \code{"permutation"}, labels are randomly permuted across spatial
-#'   locations \code{n_permutations} times. Default = \code{"none"}.
-#' 
-#' @param n_permutations Number of random label permutations to use when
-#'   \code{adjust = "permutation"}. Default = 1000.
-#' 
-#' @param seed Optional random seed to use when \code{adjust = "permutation"}.
-#'   Default = \code{NULL}.
+#'   \code{"none"} and \code{"analytic"}. With \code{"none"}, only the raw
+#'   boundary density is returned. With \code{"analytic"}, the raw boundary
+#'   density is compared to a deterministic expectation based on the observed
+#'   label counts. Default = \code{"none"}.
 #' 
 #' 
 #' @return Returns a list containing values at each point (i.e. the number of
@@ -45,10 +37,7 @@
 #'   neighbors, and the local raw boundary density) as well as the mean
 #'   discordant neighbor count and the sample-level raw boundary density. If
 #'   \code{adjust = "analytic"}, the list also contains the expected boundary
-#'   density, relative boundary density, and excess boundary density. If
-#'   \code{adjust = "permutation"}, the list also contains the permutation
-#'   mean, standard deviation, relative boundary density, standardized score,
-#'   and number of permutations.
+#'   density and relative boundary density.
 #' 
 #' 
 #' @importFrom BiocNeighbors findKNN
@@ -73,8 +62,7 @@
 #' res_adj$relative_boundary_density
 #' 
 boundary_density <- function(spatial_coords, labels, k = 6, n_threads = 1, 
-                             adjust = c("none", "analytic", "permutation"), 
-                             n_permutations = 1000, seed = NULL) {
+                             adjust = c("none", "analytic")) {
   
   adjust <- match.arg(adjust)
   
@@ -92,15 +80,6 @@ boundary_density <- function(spatial_coords, labels, k = 6, n_threads = 1,
   stopifnot(is.numeric(n_threads) && length(n_threads) == 1 && 
               is.finite(n_threads) && n_threads > 0 && 
               n_threads == floor(n_threads))
-  if (adjust == "permutation") {
-    stopifnot(is.numeric(n_permutations) && length(n_permutations) == 1 && 
-                is.finite(n_permutations) && n_permutations > 1 && 
-                n_permutations == floor(n_permutations))
-    stopifnot(is.null(seed) || 
-                (is.numeric(seed) && length(seed) == 1 && is.finite(seed) && 
-                   seed >= 0 && seed == floor(seed)))
-  }
-  
   # --- fast k-nearest neighbor search ---
   
   # search for k nearest neighbors
@@ -140,60 +119,9 @@ boundary_density <- function(spatial_coords, labels, k = 6, n_threads = 1,
       } else {
         NA_real_
       }
-    excess_boundary_density <- 
-      boundary_density - expected_boundary_density
-    
     out <- c(out, 
              list(expected_boundary_density = expected_boundary_density, 
-                  relative_boundary_density = relative_boundary_density, 
-                  excess_boundary_density = excess_boundary_density))
-  } else if (adjust == "permutation") {
-    if (!is.null(seed)) {
-      if (exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)) {
-        old_seed <- get(".Random.seed", envir = .GlobalEnv)
-        on.exit(assign(".Random.seed", old_seed, envir = .GlobalEnv), 
-                add = TRUE)
-      } else {
-        on.exit(if (exists(".Random.seed", envir = .GlobalEnv, 
-                           inherits = FALSE)) {
-          rm(".Random.seed", envir = .GlobalEnv)
-        }, add = TRUE)
-      }
-      set.seed(seed)
-    }
-    
-    permutation_boundary_density <- numeric(n_permutations)
-    for (i in seq_len(n_permutations)) {
-      permuted_labels <- sample(labels)
-      perm_neigh_labels <- matrix(permuted_labels[neigh], ncol = ncol(neigh))
-      permutation_boundary_density[i] <- 
-        mean(rowSums(permuted_labels != perm_neigh_labels) / n_neighbors)
-    }
-    
-    permutation_mean <- mean(permutation_boundary_density)
-    permutation_sd <- sqrt(
-      sum((permutation_boundary_density - permutation_mean)^2) / 
-        (n_permutations - 1))
-    permutation_relative_boundary_density <- 
-      if (permutation_mean > 0) {
-        boundary_density / permutation_mean
-      } else {
-        NA_real_
-      }
-    permutation_z <- 
-      if (permutation_sd > 0) {
-        (boundary_density - permutation_mean) / permutation_sd
-      } else {
-        NA_real_
-      }
-    
-    out <- c(out, 
-             list(permutation_mean = permutation_mean, 
-                  permutation_sd = permutation_sd, 
-                  permutation_relative_boundary_density = 
-                    permutation_relative_boundary_density, 
-                  permutation_z = permutation_z, 
-                  n_permutations = n_permutations))
+                  relative_boundary_density = relative_boundary_density))
   }
   
   out
