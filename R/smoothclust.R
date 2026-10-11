@@ -307,7 +307,11 @@ smoothclust <- function(input, assay_name = "counts", spatial_coords = NULL,
     j_idx <- rep(seq_along(nn_list), lengths(nn_list))
     dists <- unlist(dist_list, use.names = FALSE)
     
-    raw_weights <- exp(-dists / bandwidth_scaled)
+    raw_weights <- if (bandwidth_scaled == 0) {
+      rep(1, length(dists))
+    } else {
+      exp(-dists / bandwidth_scaled)
+    }
     
     # 4. normalize weights so each column in W sums to 1
     col_sums <- as.numeric(sparseMatrix(i = j_idx, 

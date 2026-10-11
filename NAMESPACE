@@ -2,16 +2,26 @@
 
 export(boundary_density)
 export(smoothclust)
-importFrom(BiocNeighbors,findKNN)
-importFrom(BiocNeighbors,findNeighbors)
+importFrom(BiocNeighbors,
+  findKNN,
+  findNeighbors
+)
 importFrom(Matrix,sparseMatrix)
-importFrom(S4Vectors,'metadata<-')
-importFrom(S4Vectors,metadata)
+importFrom(S4Vectors,
+  "metadata<-",
+  metadata
+)
 importFrom(SpatialExperiment,spatialCoords)
-importFrom(SummarizedExperiment,'assays<-')
-importFrom(SummarizedExperiment,assayNames)
-importFrom(SummarizedExperiment,assays)
-importFrom(methods,as)
-importFrom(methods,is)
-importFrom(utils,setTxtProgressBar)
-importFrom(utils,txtProgressBar)
+importFrom(SummarizedExperiment,
+  "assays<-",
+  assayNames,
+  assays
+)
+importFrom(methods,
+  as,
+  is
+)
+importFrom(utils,
+  setTxtProgressBar,
+  txtProgressBar
+)
