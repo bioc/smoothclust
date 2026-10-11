@@ -28,11 +28,12 @@ colData(spe)$label` if using a \code{SpatialExperiment} object.}
 \item{n_threads}{Number of threads to use for nearest-neighbor searches.
 Default = 1.}
 
-\item{adjust}{Composition adjustment to calculate. Options are
-\code{"none"} and \code{"analytic"}. With \code{"none"}, only the raw
-boundary density is returned. With \code{"analytic"}, the raw boundary
-density is compared to a deterministic expectation based on the observed
-label counts. Default = \code{"none"}.}
+\item{adjust}{Composition adjustment to calculate. Options are \code{"none"}
+and \code{"analytic"}. With \code{"none"}, only the raw boundary density is
+returned. With \code{"analytic"}, the analytic composition adjustment
+returns the expectation under random relabeling preserving observed label
+counts and the ratio of raw BD to this expectation (relative BD). Default =
+\code{"none"}.}
 }
 \value{
 Returns a list containing values at each point (i.e. the number of
@@ -40,18 +41,23 @@ Returns a list containing values at each point (i.e. the number of
   neighbors, and the local raw boundary density) as well as the mean
   discordant neighbor count and the sample-level raw boundary density. If
   \code{adjust = "analytic"}, the list also contains the expected boundary
-  density and relative boundary density.
+  density and sample-level relative boundary density.
 }
 \description{
 Function for boundary density metric
 }
 \details{
-Function to calculate the raw boundary density metric, defined as the
-average fraction of nearest neighbors per point that are from a different
-cluster. This metric can be used to quantify and compare the relative density
-of the boundaries of clusters or spatial domains. Optional composition
-adjustments can be used to compare the raw boundary density to an expected
-value under random relabeling.
+Function to calculate the raw boundary density metric, defined as the average
+fraction of nearest neighbors per point that are from a different cluster.
+Raw BD summarizes observed label-transition frequency on the nearest-neighbor
+graph.
+
+An optional analytic composition adjustment provides the sample-level
+relative BD. Relative BD is a composition-adjusted summary, calculated by
+dividing raw BD by its analytic expectation under random relabeling with the
+observed label counts. The expectation is calculated directly from label
+counts. Values below, equal to, or above 1 indicate fewer, the same, or more
+transitions than expected under this fixed-count random-label reference.
 }
 \examples{
 spatial_coords <- cbind(c(0, 1, 3, 6), 0)
