@@ -49,13 +49,12 @@
 #'   radius \code{bandwidth} at each spatial location, which smooths out spatial
 #'   variability as well as sparsity due to sampling variability. The
 #'   \code{kernel} method calculates a weighted average using a truncated
-#'   exponential kernel applied to Euclidean distances with a length scale
-#'   parameter equal to \code{bandwidth}, which provides a more sophisticated
-#'   approach to smoothing out spatial variability but may be affected by
-#'   sparsity due to sampling variability (especially sparsity at the index
-#'   point), and is computationally slower. The \code{knn} method calculates an
-#'   unweighted average across the index point and its k nearest neighbors, and
-#'   is the fastest method. Default = \code{uniform}.
+#'   exponential kernel applied to Euclidean distances. Nearby locations receive
+#'   greater weight, with the length scale controlled by \code{bandwidth}. This
+#'   method may be affected by sparsity due to sampling variability (especially
+#'   sparsity at the index point) and is computationally slower. The \code{knn}
+#'   method calculates an unweighted average across the index point and its k
+#'   nearest neighbors, and is the fastest method. Default = \code{uniform}.
 #' 
 #' @param bandwidth Bandwidth parameter for smoothing, expressed as proportion
 #'   of width or height (whichever is greater) of tissue area. Only used for
