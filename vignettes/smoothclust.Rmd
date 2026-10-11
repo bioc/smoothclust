@@ -146,7 +146,7 @@ assayNames(spe)
 ```
 
 
-Run clustering. We use a standard clustering workflow from single-cell data, consisting of k-means clustering on the top principal components (PCs) calculated on the set of top highly variable genes (HVGs) with logcounts as the input.
+Run clustering. We use a clustering workflow adapted from standard single-cell workflows. We select highly variable genes (HVGs) from smoothed log-expression by ranking residual variance above a fitted mean–variance trend using `modelGeneVar()`. These residuals provide empirical feature-ranking scores for clustering. We then perform k-means clustering on the top principal components (PCs) calculated from the selected genes.
 
 We use a relatively small number of clusters for demonstration purposes in this example:
 
