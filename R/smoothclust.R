@@ -1,18 +1,11 @@
 #' smoothclust
 #' 
-#' Method for identification of spatial domains and spatially-aware clustering.
+#' Smooths expression profiles across spatial neighbors for downstream spatial
+#' domain analysis.
 #' 
-#' Method for identification of spatial domains and spatially-aware clustering
-#' in spatial transcriptomics data.
+#' The function returns processed expression values for downstream feature
+#' selection, dimensionality reduction, and clustering.
 #' 
-#' Method for identification of spatial domains and spatially-aware clustering
-#' in spatial transcriptomics data. The method generates spatial domains with
-#' smooth boundaries by smoothing gene expression profiles across neighboring
-#' spatial locations, followed by unsupervised clustering. Spatial domains
-#' consisting of consistent mixtures of cell types may then be further
-#' investigated by applying cell type compositional analyses or differential
-#' analyses.
-#'
 #' When \code{normalize = TRUE}, library size normalization is performed before
 #' spatial smoothing. This ensures that neighboring locations contribute
 #' according to the spatial weights rather than their sequencing depths. When
@@ -22,13 +15,14 @@
 #' 
 #' 
 #' @param input Input data, which can be provided as either a
-#'   \code{SpatialExperiment} object or a numeric matrix. With the default
-#'   preprocessing settings, the selected assay or matrix is assumed to contain
-#'   non-negative raw expression counts. Pre-normalized or log-transformed
-#'   values may also be supplied if \code{normalize} and \code{log} are set
-#'   appropriately. Spatial coordinates are obtained from the
-#'   \code{spatialCoords} slot for a \code{SpatialExperiment}, or must be
-#'   supplied separately using \code{spatial_coords} for a numeric matrix.
+#'   \code{SpatialExperiment} object or a numeric matrix. All expression values
+#'   must be finite. With the default preprocessing settings, the selected assay
+#'   or matrix is assumed to contain non-negative raw expression counts.
+#'   Pre-normalized or log-transformed values may also be supplied if
+#'   \code{normalize} and \code{log} are set appropriately. Spatial coordinates
+#'   are obtained from the \code{spatialCoords} slot for a
+#'   \code{SpatialExperiment}, or must be supplied separately using
+#'   \code{spatial_coords} for a numeric matrix.
 #' 
 #' @param assay_name For a \code{SpatialExperiment} input object, this argument
 #'   specifies the name of the \code{assay} containing the expression values to
@@ -41,20 +35,22 @@
 #' 
 #' @param spatial_coords Numeric matrix of spatial coordinates, assumed to
 #'   contain x coordinates in first column and y coordinates in second column.
-#'   This argument is only used if the input is a numeric matrix.
+#'   Rows must correspond to expression columns in the same order. This argument
+#'   is only used if the input is a numeric matrix.
 #' 
 #' @param method Method used for smoothing. Options are \code{uniform},
-#'   \code{kernel}, and \code{knn}. The \code{uniform} method calculates
-#'   unweighted averages across spatial locations within a circular window with
-#'   radius \code{bandwidth} at each spatial location, which smooths out spatial
-#'   variability as well as sparsity due to sampling variability. The
-#'   \code{kernel} method calculates a weighted average using a truncated
-#'   exponential kernel applied to Euclidean distances. Nearby locations receive
-#'   greater weight, with the length scale controlled by \code{bandwidth}. This
-#'   method may be affected by sparsity due to sampling variability (especially
-#'   sparsity at the index point) and is computationally slower. The \code{knn}
-#'   method calculates an unweighted average across the index point and its k
-#'   nearest neighbors, and is the fastest method. Default = \code{uniform}.
+#'   \code{kernel}, and \code{knn}. All methods include the focal location. The
+#'   \code{uniform} method calculates unweighted averages across spatial
+#'   locations within a circular window with radius \code{bandwidth} at each
+#'   spatial location, which smooths out spatial variability as well as sparsity
+#'   due to sampling variability. The \code{kernel} method calculates a weighted
+#'   average using a truncated exponential kernel applied to Euclidean
+#'   distances. Nearby locations receive greater weight, with the length scale
+#'   controlled by \code{bandwidth}. This method may be affected by sparsity due
+#'   to sampling variability (especially sparsity at the focal location) and is
+#'   computationally slower. The \code{knn} method calculates an unweighted
+#'   average across the focal location and its k nearest other locations, and is
+#'   the fastest method. Default = \code{uniform}.
 #' 
 #' @param bandwidth Bandwidth parameter for smoothing, expressed as proportion
 #'   of width or height (whichever is greater) of tissue area. Only used for
@@ -69,10 +65,12 @@
 #'   area. Weights for \code{method = "kernel"} are truncated at small values
 #'   for computational efficiency. Default = 0.05.
 #' 
-#' @param k Number of nearest neighbors parameter for \code{method = "knn"}.
-#'   Only used for \code{method == "knn"}. Unweighted averages are calculated
-#'   across the index point and its k nearest neighbors. Default = 18 (based on
-#'   two layers in honeycomb pattern for 10x Genomics Visium platform).
+#' @param k Number of nearest other locations for \code{method = "knn"}.
+#'   Unweighted averages are calculated across the focal location and its k
+#'   nearest neighbors, for k + 1 locations in total. This smoothing-neighbor
+#'   count is independent of the \code{k} argument in \code{boundary_density}.
+#'   Default = 18 (based on two layers in honeycomb pattern for 10x Genomics
+#'   Visium platform).
 #' 
 #' @param truncate Truncation threshold parameter if \code{method = "kernel"}.
 #'   Kernel weights below this value are set to zero for computational
@@ -83,7 +81,7 @@
 #'
 #' @param normalize Whether to perform library size normalization before spatial
 #'   smoothing. Expression values in each column are divided by a size factor
-#'   centered to have mean one. Default = \code{TRUE}.
+#'   rescaled to have mean one. Default = \code{TRUE}.
 #'
 #' @param log Whether to apply a log2 transformation after spatial smoothing.
 #'   The transformation is \code{log2(x + pseudo_count)}. Default =
@@ -91,7 +89,7 @@
 #'
 #' @param size_factors Optional positive numeric vector with one value per
 #'   spatial location, used for normalization when \code{normalize = TRUE}.
-#'   Supplied values are centered to have mean one. If the vector is named, its
+#'   Supplied values are rescaled to have mean one. If the vector is named, its
 #'   names must match the column names of \code{input}, and values are reordered
 #'   to match the input columns. If \code{NULL}, size factors are calculated
 #'   from column sums of the selected, unsmoothed input assay or matrix. To
@@ -210,10 +208,10 @@ smoothclust <- function(input, assay_name = "counts", spatial_coords = NULL,
   # validate and normalize expression values before spatial smoothing
   size_factor_source <- "none"
   size_factors_used <- NULL
+  if (!all(is.finite(vals))) {
+    stop("Expression values must be finite.")
+  }
   if (normalize || log) {
-    if (!all(is.finite(vals))) {
-      stop("Expression values must be finite when normalization or logging is requested.")
-    }
     if (any(vals < 0)) {
       stop("Expression values must be non-negative when normalization or logging is requested.")
     }

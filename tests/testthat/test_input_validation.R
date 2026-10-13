@@ -85,6 +85,22 @@ test_that("smoothclust rejects invalid values for requested preprocessing", {
   # Pure smoothing continues to support arbitrary finite numeric values.
   expect_no_error(smoothclust(negative, spatial_coords = spatial_coords,
                               normalize = FALSE, log = FALSE))
+  expect_no_error(smoothclust(Matrix::Matrix(negative, sparse = TRUE),
+                              spatial_coords = spatial_coords,
+                              normalize = FALSE, log = FALSE))
+})
+
+test_that("smoothclust rejects non-finite values for pure smoothing", {
+  spatial_coords <- cbind(0:3, 0)
+
+  for (value in c(NA_real_, NaN, Inf, -Inf)) {
+    input <- matrix(as.numeric(1:12), nrow = 3)
+    input[1, 1] <- value
+    for (x in list(input, Matrix::Matrix(input, sparse = TRUE))) {
+      expect_error(smoothclust(x, spatial_coords = spatial_coords,
+                               normalize = FALSE, log = FALSE), "finite")
+    }
+  }
 })
 
 test_that("smoothclust validates log pseudocounts and output assay names", {

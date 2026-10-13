@@ -21,11 +21,14 @@
 #'   \code{SpatialExperiment} object.
 #' 
 #' @param labels Atomic vector or factor containing cluster labels for each
-#'   point. Missing values are not allowed. For example, `labels <-
-#'   colData(spe)$label` if using a \code{SpatialExperiment} object.
+#'   point. Labels must correspond to coordinate rows in the same order. Missing
+#'   values are not allowed. For example, `labels <- colData(spe)$label` if
+#'   using a \code{SpatialExperiment} object.
 #' 
-#' @param k Number of k nearest neighbors to use in calculation. Default = 6
-#'   (e.g. for hexagonal arrangement in 10x Genomics Visium platform).
+#' @param k Number of nearest neighbors to use in calculation, excluding the
+#'   focal location. This count is independent of the \code{k} argument used
+#'   for smoothing in \code{smoothclust}. Default = 6 (e.g. for hexagonal
+#'   arrangement in 10x Genomics Visium platform).
 #' 
 #' @param n_threads Number of threads to use for nearest-neighbor searches.
 #'   Default = 1.

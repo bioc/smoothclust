@@ -1,13 +1,13 @@
 Package: smoothclust
 Version: 1.9.6
 Title: smoothclust
-Description: Method for identification of spatial domains and spatially-aware 
-    clustering in spatial transcriptomics data. The method generates spatial 
-    domains with smooth boundaries by smoothing gene expression profiles across 
-    neighboring spatial locations, followed by unsupervised clustering. Spatial 
-    domains consisting of consistent mixtures of cell types may then be further 
-    investigated by applying cell type compositional analyses or differential 
-    analyses.
+Description: Tools for spatial domain analysis in spatial transcriptomics data.
+    Includes spatial smoothing of gene expression profiles for downstream
+    clustering and a boundary density (BD) metric for summarizing spatial
+    domain organization. The smoothing function returns processed expression
+    values for subsequent clustering. BD requires only spatial coordinates
+    and categorical labels, and provides local and sample-level summaries
+    of label transitions.
 Authors@R: c(
     person("Lukas M.", "Weber", 
            email = "weberlm3@gmail.com", 

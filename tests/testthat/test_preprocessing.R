@@ -42,7 +42,7 @@ test_that("smoothclust implements every preprocessing flag combination", {
   expect_identical(dimnames(out_default), dimnames(input))
 })
 
-test_that("automatic library-size factors are centered to mean one", {
+test_that("automatic library-size factors are rescaled to have mean one", {
   input <- matrix(
     c(2, 6, 4, 2, 8, 4, 12, 8),
     nrow = 2,
@@ -62,7 +62,7 @@ test_that("automatic library-size factors are centered to mean one", {
   expect_equal(as.matrix(out), sweep(input, 2, expected_factors, "/"))
 })
 
-test_that("supplied size factors are aligned by name and centered", {
+test_that("supplied size factors are aligned by name and rescaled to have mean one", {
   input <- matrix(
     c(2, 6, 4, 2, 8, 4, 12, 8),
     nrow = 2,
@@ -92,8 +92,8 @@ test_that("supplied size factors permit zero-sum filtered columns", {
   )
   spatial_coords <- cbind(c(0, 5, 10), 0)
   supplied <- c(2, 4, 6)
-  centered <- supplied / mean(supplied)
-  expected <- sweep(input, 2, centered, "/")
+  rescaled_factors <- supplied / mean(supplied)
+  expected <- sweep(input, 2, rescaled_factors, "/")
 
   out <- smoothclust(
     input,

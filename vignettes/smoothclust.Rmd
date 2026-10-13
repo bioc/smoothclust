@@ -35,6 +35,9 @@ The latest development version of the package can also be installed from the [de
 
 Input data can be provided either as a [SpatialExperiment](https://bioconductor.org/packages/SpatialExperiment) object within the Bioconductor framework, or as numeric matrices of expression values and spatial coordinates. See help file (`?smoothclust`) for details.
 
+For matrix input, coordinate rows must correspond to expression columns in the
+same order.
+
 In the example workflow below, we assume the input is in `SpatialExperiment` format.
 
 
@@ -98,7 +101,7 @@ raw_counts <- raw_counts[, keep_spot, drop = FALSE]
 We calculate library size factors from all non-mitochondrial genes before
 low-expression filtering. This keeps normalization independent of the chosen
 expression threshold while preventing mitochondrial composition from affecting
-normalization of the retained genes.
+normalization of the retained genes. The factors are rescaled to have mean one.
 
 ```{r}
 # calculate non-mitochondrial size factors before gene filtering
@@ -129,7 +132,9 @@ dim(spe)
 
 Run `smoothclust` using default parameter settings, which have been selected to be appropriate for Visium data from human tissue. By default, `smoothclust` normalizes the raw counts using library size factors, smooths the normalized values, and then applies a log-transformation. Supplying the factors calculated above ensures that normalization is defined using all non-mitochondrial genes rather than only the filtered analysis features.
 
-The method for smoothing can be specified by providing the `method` argument, with available options `uniform`, `kernel`, and `knn`. Additional arguments can be used to set parameter values, including `bandwidth`, `k,` and `truncate`, depending on the choice of method. For more details, see the function documentation (`?smoothclust`).
+The function returns processed expression values. Feature selection, dimensionality reduction, and clustering are performed outside `smoothclust()`.
+
+The method for smoothing can be specified by providing the `method` argument, with available options `uniform`, `kernel`, and `knn`. All methods include the focal location. For `method = "knn"`, `k` counts the other nearest neighbors, giving `k + 1` locations in each average. Additional arguments can be used to set parameter values, including `bandwidth`, `k`, and `truncate`, depending on the choice of method. For more details, see the function documentation (`?smoothclust`).
 
 ```{r, results="hide"}
 # run smoothclust using default parameters
@@ -203,7 +208,9 @@ plotCoords(spe, annotate = "ground_truth", pal = pal8)
 
 # Boundary density
 
-`boundary_density()` uses its own `k` argument for the number of neighbors, independently of smoothing. For example:
+Labels supplied to `boundary_density()` must correspond to coordinate rows in the same order.
+
+`boundary_density()` uses its own `k` argument for the number of neighbors, excluding the focal location and chosen independently of smoothing. For example:
 
 ```{r}
 boundary_k <- c(2L, 6L, 18L)
