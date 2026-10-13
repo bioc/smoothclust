@@ -154,9 +154,18 @@ test_that("boundary_density validates inputs", {
   expect_error(boundary_density(spatial_coords, labels, k = 4))
   expect_error(boundary_density(spatial_coords, labels, n_threads = 0))
   expect_error(boundary_density(spatial_coords, labels, n_threads = Inf))
-  expect_error(boundary_density(spatial_coords, labels, adjust = "bad"))
   expect_error(boundary_density(spatial_coords, c(1, 1, 2, NA), k = 1))
   expect_error(boundary_density(spatial_coords, list(1, 1, 2, 2), k = 1))
   expect_error(boundary_density(spatial_coords, 
                                 matrix(c(1, 1, 2, 2), ncol = 1), k = 1))
+})
+
+test_that("boundary_density validates the adjustment flag", {
+  spatial_coords <- cbind(0:3, 0)
+  labels <- c(1, 1, 2, 2)
+
+  for (adjust in list(NA, logical(0), c(TRUE, FALSE), 1, "bad")) {
+    expect_error(boundary_density(spatial_coords, labels, k = 1,
+                                  adjust = adjust))
+  }
 })

@@ -7,13 +7,15 @@ test_that("results object has correct structure", {
   expect_is(res, "list")
   expect_named(res, c("n_discordant", "n_neighbors", "local_boundary_density", 
                       "mean_discordant", "boundary_density"))
+  expect_identical(res, boundary_density(spatial_coords, labels, k = 2,
+                                        adjust = FALSE))
 })
 
 test_that("boundary_density returns analytic composition adjustment", {
   spatial_coords <- cbind(c(0, 1, 3, 6), 0)
   labels <- c(1, 2, 1, 1)
   
-  res <- boundary_density(spatial_coords, labels, k = 2, adjust = "analytic")
+  res <- boundary_density(spatial_coords, labels, k = 2, adjust = TRUE)
   
   expect_named(res, c("n_discordant", "n_neighbors",
                       "local_boundary_density", "mean_discordant",
@@ -30,9 +32,9 @@ test_that("boundary_density supports character and factor labels", {
   labels_fac <- factor(labels_chr)
   
   res_chr <- boundary_density(spatial_coords, labels_chr, k = 2, 
-                              adjust = "analytic")
+                              adjust = TRUE)
   res_fac <- boundary_density(spatial_coords, labels_fac, k = 2, 
-                              adjust = "analytic")
+                              adjust = TRUE)
   
   expect_equal(res_chr$n_discordant, c(1, 2, 1, 1))
   expect_equal(res_fac$n_discordant, res_chr$n_discordant)
@@ -46,7 +48,7 @@ test_that("boundary_density handles one-label composition references", {
   labels <- c(1, 1, 1, 1)
   
   analytic <- boundary_density(spatial_coords, labels, k = 2, 
-                               adjust = "analytic")
+                               adjust = TRUE)
   
   expect_equal(analytic$boundary_density, 0)
   expect_equal(analytic$expected_boundary_density, 0)

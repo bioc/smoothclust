@@ -30,19 +30,18 @@
 #' @param n_threads Number of threads to use for nearest-neighbor searches.
 #'   Default = 1.
 #' 
-#' @param adjust Composition adjustment to calculate. Options are \code{"none"}
-#'   and \code{"analytic"}. With \code{"none"}, only the raw boundary density is
-#'   returned. With \code{"analytic"}, the analytic composition adjustment
-#'   returns the expectation under random relabeling preserving observed label
-#'   counts and the ratio of raw BD to this expectation (relative BD). Default =
-#'   \code{"none"}.
+#' @param adjust Whether to calculate the composition adjustment. With
+#'   \code{FALSE}, only the raw boundary density is returned. With \code{TRUE},
+#'   the analytic composition adjustment returns the expectation under random
+#'   relabeling preserving observed label counts and the ratio of raw BD to this
+#'   expectation (relative BD). Default = \code{FALSE}.
 #' 
 #' 
 #' @return Returns a list containing values at each point (i.e. the number of
 #'   nearest neighbors that are from a different cluster, the number of nearest
 #'   neighbors, and the local raw boundary density) as well as the mean
 #'   discordant neighbor count and the sample-level raw boundary density. If
-#'   \code{adjust = "analytic"}, the list also contains the expected boundary
+#'   \code{adjust = TRUE}, the list also contains the expected boundary
 #'   density and sample-level relative boundary density.
 #' 
 #' 
@@ -63,14 +62,14 @@
 #' 
 #' # calculate analytic composition adjustment
 #' res_adj <- boundary_density(spatial_coords, labels, k = 2, 
-#'                             adjust = "analytic")
+#'                             adjust = TRUE)
 #' res_adj$expected_boundary_density
 #' res_adj$relative_boundary_density
 #' 
 boundary_density <- function(spatial_coords, labels, k = 6, n_threads = 1, 
-                             adjust = c("none", "analytic")) {
+                             adjust = FALSE) {
   
-  adjust <- match.arg(adjust)
+  stopifnot(is.logical(adjust) && length(adjust) == 1 && !is.na(adjust))
   
   stopifnot(!is.null(spatial_coords), 
             is.numeric(spatial_coords), 
@@ -114,7 +113,7 @@ boundary_density <- function(spatial_coords, labels, k = 6, n_threads = 1,
               mean_discordant = mean(n_discordant), 
               boundary_density = boundary_density)
   
-  if (adjust == "analytic") {
+  if (adjust) {
     label_counts <- as.numeric(table(labels))
     n <- length(labels)
     expected_boundary_density <- 
